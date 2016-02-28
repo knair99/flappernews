@@ -34,7 +34,7 @@
           </span>
         </span>
         <span>
-            <a href="#/posts/{{$index}}">Comments</a>
+            <a href="#/posts/{{post._id}}">Comments</a>
         </span>
   </div>
   <form ng-submit="addPost()"
@@ -72,7 +72,7 @@
         <span class="glyphicon glyphicon-thumbs-up"
               ng-click="incrementUpvotes(comment)">
         </span>
-    {{comment.upvotes}} - by: {{comment.author}}
+    {{comment.upvotes}} - by: {{comment.author}} said: "{{comment.body}}"
   </div>
   <form ng-submit="addComment()"
         style="margin-top:30px;">

@@ -72,8 +72,11 @@ router.post('/posts', function(req, res, next){
 //3. User needs to be able to get each post = GET /posts/:id <- will include comments associated by REF
 //Test: curl http://localhost:3000/posts/<ID>
 router.get('/posts/:post', function(req, res) {
-  res.json(req.post);
-});
+  req.post.populate('comments', function(err, post) { //this will list the comments associated too
+    if (err) { return next(err); }
+
+    res.json(post);
+  });});
 
 //4. The user needs to be able to upvote a post = PUT /post/:id
 //Test: curl -X PUT http://localhost:3000/posts/<POST ID>/upvote
