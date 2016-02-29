@@ -231,7 +231,8 @@ app.controller('PostCtrl', [
 ]);
 
 //Add an authorization controller
-.controller('AuthCtrl', [
+//As always, pass along the auth factory
+app.controller('AuthCtrl', [
     '$scope',
     '$state',
     'auth',
@@ -254,7 +255,19 @@ app.controller('PostCtrl', [
                 $state.go('home');
             });
         };
-    }])
+}]);
+
+
+//Add controller for navigation
+//As always, pass along the auth factory
+app.controller('NavCtrl', [
+    '$scope',
+    'auth',
+    function($scope, auth){
+        $scope.isLoggedIn = auth.isLoggedIn;
+        $scope.currentUser = auth.currentUser;
+        $scope.logOut = auth.logOut;
+}]);
 
 
 //Notes:
