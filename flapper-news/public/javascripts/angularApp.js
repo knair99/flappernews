@@ -66,59 +66,6 @@ app.config([
     }
 ]);
 
-//define factory/service here for our controller
-//mostly to share code and data between different controllers
-app.factory('posts', ['$http', function($http){
-    var o = { posts: [] };
-
-    //This is for a GET of all posts
-    o.getAll = function(){
-        return $http.get('/posts').success(function(data){ //This data is from the DB
-           angular.copy(data, o.posts);
-        });
-    }
-
-    //This for a GET on a single post of _id
-    o.get = function(id){
-        return $http.get('/posts/' + id).then(function(res){ //using a promise here with 'then']
-           return res.data;
-        });
-    }
-
-    //This is for a POST of a new post
-    o.create = function(post){
-        return $http.post('/posts', post).success(function(data){
-            o.posts.push(data);
-            //This is for just our front end so it doesn't always go back to the server
-        });
-    }
-
-    //This is for a PUT for upvoting a post
-    //The _id is the actual mongo ID
-    o.upvote = function(post){
-        $http.put('/posts/' + post._id +'/upvote').success(function(data){
-           //and for the front end
-            post.upvotes += 1;
-        });
-    }
-
-    //This is for a POST for adding a comment
-    o.addComment = function(id, comment){
-      return $http.post('/posts/' + id + '/comments/', comment);
-    };
-
-    //This is for a PUT that upvotes a comment
-    o.upvoteComment = function(post, comment){
-      return $http.put('/posts/' + post._id + '/comments/' + comment._id + '/upvote')
-          .success(function(data){ //data back from mongo
-              comment.upvotes += 1;
-          })
-    };
-
-
-    return o;
-}]);
-
 
 //Now define our angular authentication mechanism that will interact
 //with the server for registering and logging in. Also find out if the session
@@ -178,7 +125,70 @@ app.factory('auth', ['$http', '$window', function($http, $window){
     };
 
     return auth;
-}])
+}]);
+
+
+//define factory/service here for our controller
+//mostly to share code and data between different controllers
+app.factory('posts', ['$http', 'auth', function($http, auth){
+    var o = { posts: [] };
+
+    //This is for a GET of all posts
+    o.getAll = function(){
+        return $http.get('/posts').success(function(data){ //This data is from the DB
+           angular.copy(data, o.posts);
+        });
+    }
+
+    //This for a GET on a single post of _id
+    o.get = function(id){
+        return $http.get('/posts/' + id).then(function(res){ //using a promise here with 'then']
+           return res.data;
+        });
+    }
+
+    //This is for a POST of a new post
+    o.create = function(post){
+        return $http.post('/posts', post, {
+            headers: {Authorization: 'Bearer '+auth.getToken()}
+        }).success(function(data){
+            o.posts.push(data);
+            //This is for just our front end so it doesn't always go back to the server
+        });
+    }
+
+    //This is for a PUT for upvoting a post
+    //The _id is the actual mongo ID
+    o.upvote = function(post){
+        $http.put('/posts/' + post._id +'/upvote', null, {
+            headers: {Authorization: 'Bearer '+auth.getToken()}
+        }).success(function(data){
+           //and for the front end
+            post.upvotes += 1;
+        });
+    }
+
+    //This is for a POST for adding a comment
+    o.addComment = function(id, comment){
+      return $http.post('/posts/' + id + '/comments/', comment, {
+          headers: {Authorization: 'Bearer '+auth.getToken()}
+      });
+    };
+
+    //This is for a PUT that upvotes a comment
+    o.upvoteComment = function(post, comment){
+      return $http.put('/posts/' + post._id + '/comments/' + comment._id + '/upvote', null, {
+          headers: {Authorization: 'Bearer '+auth.getToken()}
+      }).success(function(data){ //data back from mongo
+              comment.upvotes += 1;
+          })
+    };
+
+
+    return o;
+}]);
+
+
 
 //Now define our controller for home page
 //Now inject that factory into our controller
