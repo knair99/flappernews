@@ -1,5 +1,9 @@
 var express = require('express');
 var router = express.Router();
+var passport = require('passport');
+var jwt = require('express-jwt');
+var auth = jwt({secret: 'SECRET', userProperty: 'payload' });
+
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
@@ -9,6 +13,8 @@ router.get('/', function(req, res, next) {
 var mongoose = require('mongoose');
 var Post = mongoose.model('Post');
 var Comment = mongoose.model('Comment');
+var User = mongoose.model('User');
+
 
 //Here we define different REST actions, so the user can interact with server, via the front end
 //Map each user actions with the db, to its approp http verb
@@ -45,7 +51,36 @@ router.param('comment', function(req, res, next, id){ //gets the params in the h
   });
 });
 
+//0. c. Routing for registering a user
+router.post('/register', function(req, res, next){
+  if(!req.body.username || !req.body.password){
+    return res.status(400).json({message: 'Please fill out all fields'});
+  }
+  var user = new User();
+  user.username = req.body.username;
+  user.setPassword(req.body.password)
+  user.save(function (err){
+    if(err){ return next(err); }
+    return res.json({token: user.generateJWT()})
+  });
+});
 
+//0. d. Routing for logging in a user
+router.post('/login', function(req, res, next){
+  if(!req.body.username || !req.body.password){
+    return res.status(400).json({message: 'Please fill out all fields'});
+  }
+  passport.authenticate('local', function(err, user, info){
+    if(err){ return next(err); }
+    if(user){
+      return res.json({token: user.generateJWT()});
+    } else {
+      return res.status(401).json(info);
+    }
+  })(req, res, next);
+});
+
+//GET ALL POSTS
 //1. User needs to see a list of posts = GET /posts
 //Test: curl http://localhost:3000/posts
 router.get('/posts', function(req, res, next){
@@ -56,9 +91,10 @@ router.get('/posts', function(req, res, next){
   });
 });
 
-//2. The user needs to be able to post a post = POST /posts
+//CREATE A POST
+//2. The user needs to be able to create a post = POST /posts
 //Test: curl --data 'title=test&link=http://test.com' http://localhost:3000/posts
-router.post('/posts', function(req, res, next){
+router.post('/posts', auth, function(req, res, next){
   var post = new Post(req.body);
   //Save into mongoDB
   post.save(function(err, post){
@@ -68,7 +104,7 @@ router.post('/posts', function(req, res, next){
   });
 });
 
-
+//GET POST BY ID - GET INDIVIDUAL POSTS
 //3. User needs to be able to get each post = GET /posts/:id <- will include comments associated by REF
 //Test: curl http://localhost:3000/posts/<ID>
 router.get('/posts/:post', function(req, res) {
@@ -78,9 +114,10 @@ router.get('/posts/:post', function(req, res) {
     res.json(post);
   });});
 
+//UPVOTE A POST
 //4. The user needs to be able to upvote a post = PUT /post/:id
 //Test: curl -X PUT http://localhost:3000/posts/<POST ID>/upvote
-router.put('/posts/:post/upvote', function(req, res, next){
+router.put('/posts/:post/upvote', auth, function(req, res, next){
   req.post.upvote(function(err, post){
     if(err) {return next(err);}
 
@@ -88,12 +125,14 @@ router.put('/posts/:post/upvote', function(req, res, next){
   });
 });
 
+//POST A COMMENT
 //5. The user needs to be able to post a comment = POST /posts/:id/comments
 //Test: curl --data 'body=blahblah&author=joe' http://localhost:3000/posts/<ID>/comments
-router.post('/posts/:post/comments', function(req, res, next){
+router.post('/posts/:post/comments', auth, function(req, res, next){
   //Need to save it to db
   var comment = new Comment(req.body);
   comment.post = req.post; //We have this thanks to the preprocessing param function
+  comment.author = req.payload.username; //Now, we can actually add username to everything
 
   comment.save(function(err, comment){
     if(err) { return next(err); }
@@ -109,9 +148,10 @@ router.post('/posts/:post/comments', function(req, res, next){
 
 });
 
+//UPVOTE A COMMENT
 //6. User needs to be able to upvote a comment = PUT /posts/:id/comments/:comment
 //Test: curl -X PUT http://localhost:3000/posts/<POST-ID>/comments/<COMMENT-ID>/upvote
-router.put('/posts/:post/comments/:comment/upvote', function(req, res, next){
+router.put('/posts/:post/comments/:comment/upvote', auth, function(req, res, next){
   req.comment.upvote(function(err, comment){
     if(err) {return next(err);}
 
@@ -119,6 +159,7 @@ router.put('/posts/:post/comments/:comment/upvote', function(req, res, next){
   });
 });
 
+//DISPLAY A COMMENT
 //Not really necessary, but to display just one comment
 router.get('/posts/:post/comments/:comment', function(req, res){
 
