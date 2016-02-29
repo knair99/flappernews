@@ -34,6 +34,33 @@ app.config([
             }
         });
 
+        //Now add a couple more states to our state machine
+        //For logins
+        $stateProvider.state('login',
+            {url: '/login',
+            templateUrl: '/login.html',
+            controller: 'AuthCtrl',
+            //we need onEnter promise because we might transition states to home
+            onEnter:[ '$state', 'auth', function($state, auth){
+                if(auth.isLoggedIn()){
+                    $state.go('home');
+                } //change states if logged in - go home
+            }]
+        });
+
+        //And same thing for register
+        $stateProvider.state('register',
+            {url: '/register',
+                templateUrl: '/register.html',
+                controller: 'AuthCtrl',
+                //we need onEnter because we might transition states to home
+                onEnter:[ '$state', 'auth', function($state, auth){
+                    if(auth.isLoggedIn()){
+                        $state.go('home');
+                    } //change states if logged in - go home
+                }]
+            });
+
         //For everything else, route to home, for now
         $urlRouterProvider.otherwise('home');
     }
@@ -202,6 +229,33 @@ app.controller('PostCtrl', [
         };
     }
 ]);
+
+//Add an authorization controller
+.controller('AuthCtrl', [
+    '$scope',
+    '$state',
+    'auth',
+    function($scope, $state, auth){
+        $scope.user = {};
+
+        //Make sure the factory methods are called for all actions
+        $scope.register = function(){
+            auth.register($scope.user).error(function(error){
+                $scope.error = error;
+            }).then(function(){
+                $state.go('home');
+            });
+        };
+
+        $scope.logIn = function(){
+            auth.logIn($scope.user).error(function(error){
+                $scope.error = error;
+            }).then(function(){
+                $state.go('home');
+            });
+        };
+    }])
+
 
 //Notes:
 //1. You can spin off a simple web server for testing by typing 'python -m SimpleHTTPServer 8888' from the directory
