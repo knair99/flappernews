@@ -92,6 +92,67 @@ app.factory('posts', ['$http', function($http){
     return o;
 }]);
 
+
+//Now define our angular authentication mechanism that will interact
+//with the server for registering and logging in. Also find out if the session
+//is still alive
+app.factory('auth', ['$http', '$window', function($http, $window){
+    var auth = {};
+
+    //Now we can get and save tokens from the local storage on the client
+    auth.saveToken = function (token){
+        $window.localStorage['flapper-news-token'] = token;
+    };
+
+    auth.getToken = function (){
+        return $window.localStorage['flapper-news-token'];
+    }
+
+    //Now we can find out if the client is logged in or not
+    auth.isLoggedIn = function(){
+        var token = auth.getToken();
+
+        if(token){
+            var payload = JSON.parse($window.atob(token.split('.')[1]));
+
+            return payload.exp > Date.now() / 1000; //check if session has expired
+        } else {
+            return false;
+        }
+    };
+
+    //now we can provide basic login, register and logout functionality
+    //by interacting with our server
+    auth.currentUser = function(){
+        if(auth.isLoggedIn()){
+            var token = auth.getToken();
+            var payload = JSON.parse($window.atob(token.split('.')[1]));
+
+            return payload.username;
+        }
+    };
+
+    //Register by http post to our routes
+    auth.register = function(user){ //we haven't defined this user yet, which we will after writing out our HTML later
+        return $http.post('/register', user).success(function(data){
+            auth.saveToken(data.token);
+        });
+    };
+
+    //Same thing for login and logout
+    auth.logIn = function(user){
+        return $http.post('/login', user).success(function(data){
+            auth.saveToken(data.token);
+        });
+    };
+
+    auth.logOut = function(){
+        $window.localStorage.removeItem('flapper-news-token'); //clear out the token from local storage
+    };
+
+    return auth;
+}])
+
 //Now define our controller for home page
 //Now inject that factory into our controller
 app.controller('MainCtrl', [
